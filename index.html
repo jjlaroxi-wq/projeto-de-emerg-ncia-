@@ -1,1 +1,303 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cadastro de Alunos</title>
 
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      background: #f4f6f9;
+      color: #222;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 30px 15px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 700px;
+      background: #fff;
+      border-radius: 14px;
+      padding: 24px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    }
+
+    h1 {
+      margin-bottom: 20px;
+      font-size: 28px;
+      text-align: center;
+      color: #1f2937;
+    }
+
+    .form {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    input {
+      flex: 1;
+      padding: 14px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      font-size: 16px;
+      outline: none;
+      transition: 0.2s;
+    }
+
+    input:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 4px rgba(37,99,235,0.1);
+    }
+
+    button {
+      padding: 14px 20px;
+      border: none;
+      border-radius: 10px;
+      background: #2563eb;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      transition: 0.2s;
+      font-weight: bold;
+    }
+
+    button:hover {
+      background: #1d4ed8;
+    }
+
+    .status {
+      margin-bottom: 16px;
+      font-size: 14px;
+      color: #555;
+    }
+
+    ul {
+      list-style: none;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid #e5e7eb;
+    }
+
+    li {
+      padding: 14px 16px;
+      font-size: 16px;
+    }
+
+    li:nth-child(odd) {
+      background: #f9fafb;
+    }
+
+    li:nth-child(even) {
+      background: #ffffff;
+    }
+
+    .empty {
+      text-align: center;
+      color: #777;
+      padding: 20px;
+    }
+
+    @media (max-width: 600px) {
+      .form {
+        flex-direction: column;
+      }
+
+      button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>Cadastro de Alunos</h1>
+
+    <div class="form">
+      <input
+        type="text"
+        id="studentName"
+        placeholder="Digite o nome do aluno"
+      />
+
+      <button onclick="saveStudent()">
+        Salvar
+      </button>
+    </div>
+
+    <div class="status" id="status"></div>
+
+    <ul id="studentList">
+      <li class="empty">Carregando alunos...</li>
+    </ul>
+  </div>
+
+  <script>
+    // ==========================================
+    // CONFIGURAÇÃO
+    // ==========================================
+    const CONFIG = {
+      WEB_APP_URL: "COLE_AQUI_A_URL_DO_SEU_WEB_APP"
+    };
+
+    // ==========================================
+    // JSONP
+    // ==========================================
+    function jsonp(url) {
+      return new Promise((resolve, reject) => {
+
+        const callbackName =
+          "jsonp_callback_" + Date.now() + "_" + Math.floor(Math.random() * 10000);
+
+        window[callbackName] = function(data) {
+          resolve(data);
+
+          script.remove();
+
+          delete window[callbackName];
+        };
+
+        const script = document.createElement("script");
+
+        script.src =
+          `${url}${url.includes("?") ? "&" : "?"}callback=${callbackName}`;
+
+        script.onerror = function() {
+          reject("Erro ao carregar JSONP");
+        };
+
+        document.body.appendChild(script);
+      });
+    }
+
+    // ==========================================
+    // ELEMENTOS
+    // ==========================================
+    const studentList = document.getElementById("studentList");
+    const statusEl = document.getElementById("status");
+    const inputEl = document.getElementById("studentName");
+
+    // ==========================================
+    // STATUS
+    // ==========================================
+    function setStatus(message) {
+      statusEl.textContent = message;
+    }
+
+    // ==========================================
+    // RENDER LISTA
+    // ==========================================
+    function renderStudents(students) {
+
+      if (!students || students.length === 0) {
+        studentList.innerHTML =
+          `<li class="empty">Nenhum aluno cadastrado.</li>`;
+        return;
+      }
+
+      studentList.innerHTML = students
+        .map(student => `<li>${student.nome}</li>`)
+        .join("");
+    }
+
+    // ==========================================
+    // CARREGAR ALUNOS
+    // ==========================================
+    async function loadStudents() {
+
+      try {
+
+        setStatus("Carregando alunos...");
+
+        const url =
+          `${CONFIG.WEB_APP_URL}?action=list`;
+
+        const response = await jsonp(url);
+
+        if (response.success) {
+
+          renderStudents(response.students);
+
+          setStatus(
+            `${response.students.length} aluno(s) carregado(s).`
+          );
+
+        } else {
+
+          setStatus("Erro ao carregar alunos.");
+        }
+
+      } catch (error) {
+
+        console.error(error);
+
+        setStatus("Falha na comunicação com o servidor.");
+      }
+    }
+
+    // ==========================================
+    // SALVAR ALUNO
+    // ==========================================
+    async function saveStudent() {
+
+      const name = inputEl.value.trim();
+
+      if (!name) {
+        alert("Digite o nome do aluno.");
+        return;
+      }
+
+      try {
+
+        setStatus("Salvando aluno...");
+
+        const url =
+          `${CONFIG.WEB_APP_URL}?action=add&name=${encodeURIComponent(name)}`;
+
+        const response = await jsonp(url);
+
+        if (response.success) {
+
+          inputEl.value = "";
+
+          setStatus("Aluno salvo com sucesso.");
+
+          loadStudents();
+
+        } else {
+
+          setStatus(response.message || "Erro ao salvar.");
+        }
+
+      } catch (error) {
+
+        console.error(error);
+
+        setStatus("Falha ao salvar aluno.");
+      }
+    }
+
+    // ENTER para salvar
+    inputEl.addEventListener("keydown", function(e) {
+      if (e.key === "Enter") {
+        saveStudent();
+      }
+    });
+
+    // Inicialização
+    loadStudents();
+  </script>
+
+</body>
+</html>
